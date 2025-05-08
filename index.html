@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Car Dodger X</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: #121212;
+      color: white;
+      text-align: center;
+    }
+    #gameArea {
+      position: relative;
+      width: 400px;
+      height: 600px;
+      margin: 30px auto;
+      background: url('https://i.imgur.com/vD2k6g9.jpg') no-repeat center center;
+      background-size: cover;
+      border: 4px solid white;
+      overflow: hidden;
+    }
+    .car {
+      position: absolute;
+      width: 50px;
+      height: 100px;
+      bottom: 10px;
+    }
+    .enemy {
+      position: absolute;
+      width: 50px;
+      height: 100px;
+      top: -120px;
+    }
+    #score, #level {
+      font-size: 20px;
+      margin-top: 10px;
+    }
+    #startScreen {
+      margin-top: 50px;
+    }
+    .car-option {
+      cursor: pointer;
+      display: inline-block;
+      margin: 0 10px;
+    }
+    .car-option img {
+      width: 50px;
+      height: 100px;
+      border: 2px solid transparent;
+      transition: transform 0.2s;
+    }
+    .car-option img.selected {
+      border-color: yellow;
+      transform: scale(1.1);
+    }
+    #startBtn {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 18px;
+      background-color: #28a745;
+      color: white;
+      border: none;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="startScreen">
+    <h1>🚗 Choose Your Car</h1>
+    <div id="carSelection">
+      <div class="car-option" data-src="https://i.imgur.com/O7pzVHE.png">
+        <img src="https://i.imgur.com/O7pzVHE.png" class="selected" alt="Player Car 1">
+      </div>
+      <div class="car-option" data-src="https://i.imgur.com/0Z8ZoeU.png">
+        <img src="https://i.imgur.com/0Z8ZoeU.png" alt="Player Car 2">
+      </div>
+      <div class="car-option" data-src="https://i.imgur.com/HO8R7Db.png">
+        <img src="https://i.imgur.com/HO8R7Db.png" alt="Player Car 3">
+      </div>
+    </div>
+    <button id="startBtn">Start Game</button>
+  </div>
+
+  <div id="score" style="display:none;">Score: 0</div>
+  <div id="level" style="display:none;">Level: 1</div>
+  <div id="gameArea" style="display:none;"></div>
+
+  <!-- Background Music -->
+  <audio id="bgMusic" loop autoplay>
+    <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" type="audio/mp3">
+    Your browser does not support the audio element.
+  </audio>
+
+  <!-- Collision Sound -->
+  <audio id="collisionSound">
+    <source src="https://www.soundjay.com/button/beep-07.wav" type="audio/wav">
+    Your browser does not support the audio element.
+  </audio>
+
+  <!-- Level Up Sound -->
+  <audio id="levelUpSound">
+    <source src="https://www.soundjay.com/button/beep-08b.wav" type="audio/wav">
+    Your browser does not support the audio element.
+  </audio>
+
+  <script>
+    const gameArea = document.getElementById("gameArea");
+    const startScreen = document.getElementById("startScreen");
+    const scoreDisplay = document.getElementById("score");
+    const levelDisplay = document.getElementById("level");
+    const carOptions = document.querySelectorAll(".car-option img");
+    const startBtn = document.getElementById("startBtn");
+
+    const bgMusic = document.getElementById("bgMusic");
+    const collisionSound = document.getElementById("collisionSound");
+    const levelUpSound = document.getElementById("levelUpSound");
+
+    let playerCar;
+    let playerCarSrc = carOptions[0].src;
+    let score = 0;
+    let level = 1;
+    let gameRunning = true;
+    let speed = 5;
+
+    carOptions.forEach(car => {
+      car.addEventListener("click", () => {
+        carOptions.forEach(c => c.classList.remove("selected"));
+        car.classList.add("selected");
+        playerCarSrc = car.src;
+      });
+    });
+
+    startBtn.addEventListener("click", () => {
+      startScreen.style.display = "none";
+      gameArea.style.display = "block";
+      scoreDisplay.style.display = "block";
+      levelDisplay.style.display = "block";
+      startGame();
+    });
+
+    function startGame() {
+      playerCar = document.createElement("img");
+      playerCar.src = playerCarSrc;
+      playerCar.classList.add("car");
+      playerCar.style.left = "175px";
+      gameArea.appendChild(playerCar);
+      gameRunning = true;
+      document.addEventListener("keydown", moveCar);
+      setInterval(() => { if (gameRunning) createEnemy(); }, 1500);
+    }
+
+    function moveCar(e) {
+      const left = parseInt(playerCar.style.left);
+      if (e.key === "ArrowLeft" && left > 0) {
+        playerCar.style.left = (left - 20) + "px";
+      } else if (e.key === "ArrowRight" && left < 350) {
+        playerCar.style.left = (left + 20) + "px";
+      }
+    }
+
+    function createEnemy() {
+      const enemy = document.createElement("img");
+      enemy.src = "https://i.imgur.com/Xq2eF4L.png";  // Enemy car image
+      enemy.classList.add("enemy");
+      enemy.style.left = Math.random() * (gameArea.clientWidth - 50) + "px";
+      gameArea.appendChild(enemy);
+
+      let pos = -120;
+      const interval = setInterval(() => {
+        if (!gameRunning) return clearInterval(interval);
+        pos += speed;
+        enemy.style.top = pos + "px";
+
+        // Collision detection
+        const enemyX = enemy.offsetLeft;
+        const enemyY = enemy.offsetTop;
+        const playerX = playerCar.offsetLeft;
+        const playerY = playerCar.offsetTop;
+
+        if (
+          enemyY + 100 >= playerY &&
+          enemyY <= playerY + 100 &&
+          enemyX < playerX + 50 &&
+          enemyX + 50 > playerX
+        ) {
+          gameRunning = false;
+          collisionSound.play();  // Play collision sound
+          alert("💥 Crash! Game Over.\nScore: " + score);
+          location.reload();
+        }
+
+        if (pos > 600) {
+          enemy.remove();
+          score++;
+          scoreDisplay.innerText = "Score: " + score;
+          checkLevelUp();
+          clearInterval(interval);
+        }
+      }, 30);
+    }
+
+    function checkLevelUp() {
+      if (score % 10 === 0) {
+        level++;
+        levelDisplay.innerText = "Level: " + level;
+        levelUpSound.play();  // Play level-up sound
+        speed += 1;
+      }
+    }
+  </script>
+</body>
+</html>
